@@ -26,7 +26,10 @@
 
 (defun solve (program-class tests max-generations &rest other-args
               &key
-                (population-size *population-size*)
+                initial-population
+                (population-size (if initial-population
+                                     (length initial-population)
+                                     *population-size*))
                 (generation-size *generation-size*)
                 (mutation-rate *mutation-rate*)
                 (min-error 0)
@@ -54,10 +57,29 @@
                (iter:iter (iter:for idx :below (length errors))
                  (if (= max-error-val
                         (apply #'+ (elt errors idx)))
-                     (return idx))))))
-    (let* ((population (coerce (iter:iter (iter:repeat population-size)
-                                 (iter:collect (apply #'generate-random program-class other-args)))
-                               'vector))
+                     (return idx)))))
+           (select-worst-program-lexicase (errors)
+             "Uses lexicase selection to choose a 'worst' program for the next generation"
+             (iter:iter
+               (iter:with error-idxs := (alexandria:shuffle (range (length (elt errors 0)))))
+               (iter:initially (setf remaining-prog-idxs (range (length errors))))
+               (iter:while (cdr remaining-prog-idxs))
+               (iter:for error-idx :in error-idxs)
+               (iter:for max-error-val :next
+                         (iter:iter
+                           (iter:for prog-idx :in remaining-prog-idxs)
+                           (iter:for errs :next (elt errors prog-idx))
+                           (iter:maximize (elt errs error-idx))))
+               (iter:for remaining-prog-idxs :next (delete-if-not (lambda (e) (= e max-error-val))
+                                                                  remaining-prog-idxs
+                                                                  :key (lambda (p) (elt (elt errors p)
+                                                                                   error-idx))))
+               (iter:finally (return (alexandria:random-elt remaining-prog-idxs))))))
+    (let* ((population (coerce
+                        (or initial-population
+                            (iter:iter (iter:repeat population-size)
+                              (iter:collect (apply #'generate-random program-class other-args))))
+                        'vector))
            (errors (coerce (iter:iter (iter:for i :below population-size)
                              (iter:collect (mapcar (lambda (test)
                                                      (funcall test (elt population i)))
@@ -69,7 +91,7 @@
           (iter:for parent1-idx :next (select-best-program-lexicase errors))
           (iter:for parent1 :next (elt population parent1-idx))
           (iter:for parent2 :next (elt population (select-best-program-lexicase errors)))
-          (iter:for worst-idx :next (select-worst-program errors))
+          (iter:for worst-idx :next (select-worst-program-lexicase errors))
           (setf (elt population worst-idx) (make-child parent1 parent2))
           (if (< (random 1.0) mutation-rate)
               (mutate (elt population worst-idx)))
