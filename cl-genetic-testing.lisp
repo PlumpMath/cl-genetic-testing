@@ -53,10 +53,10 @@
                (iter:finally (return (alexandria:random-elt remaining-prog-idxs)))))
            (select-worst-program (errors)
              (let* ((max-error-val (iter:iter (iter:for idx :below (length errors))
-                                     (iter:maximize (apply #'+ (elt errors idx))))))
+                                     (iter:maximize (reduce #'+ (elt errors idx))))))
                (iter:iter (iter:for idx :below (length errors))
                  (if (= max-error-val
-                        (apply #'+ (elt errors idx)))
+                        (reduce #'+ (elt errors idx)))
                      (return idx)))))
            (select-worst-program-lexicase (errors)
              "Uses lexicase selection to choose a 'worst' program for the next generation"
@@ -100,7 +100,7 @@
                                                tests))
           (iter:finally (let ((errors (elt errors parent1-idx)))
                           (print errors)
-                          (if (<= (apply #'+ errors) min-error)
+                          (if (<= (reduce #'+ errors) min-error)
                               (return-from solve (values population
                                                          parent1)))))))
       (values population nil))))
