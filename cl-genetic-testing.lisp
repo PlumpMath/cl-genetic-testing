@@ -20,9 +20,10 @@
 (defparameter *generation-size* 10)
 (defparameter *mutation-rate* 0.001)
 
-(defun range (n)
+(defun range (n &optional skipping)
   (iter:iter (iter:for i :below n)
-    (iter:collect i)))
+    (unless (member i skipping)
+      (iter:collect i))))
 
 (defun solve (program-class test-sets max-generations &rest other-args
               &key
@@ -102,7 +103,7 @@
                                        (alexandria:random-elt
                                         (reduce #'select-best-program-lexicase
                                                 errors
-                                                :initial-value (range population-size)
+                                                :initial-value (range population-size (list parent1-idx))
                                                 :from-end t))))
           (iter:for worst-idx :next (alexandria:random-elt
                                      (reduce #'select-worst-program-lexicase
