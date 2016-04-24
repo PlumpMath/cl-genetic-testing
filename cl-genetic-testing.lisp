@@ -99,20 +99,23 @@
         (iter:iter
           (iter:repeat generation-size)
           (iter:for parent1 :next (elt population (iter:in outer (iter:next parent1-idx))))
-          (iter:for parent2 :next (elt population
-                                       (alexandria:random-elt
-                                        (reduce #'select-best-program-lexicase
-                                                errors
-                                                :initial-value (range population-size (list parent1-idx))
-                                                :from-end t))))
           (iter:for worst-idx :next (alexandria:random-elt
                                      (reduce #'select-worst-program-lexicase
                                              errors
                                              :initial-value (range population-size)
                                              :from-end t)))
-          (setf (elt population worst-idx) (make-child parent1 parent2))
-          (if (< (random 1.0) mutation-rate)
-              (mutate (elt population worst-idx)))
+          (if (> (random 1.0) mutation-rate)
+              (progn
+                (iter:for parent2 :next (elt population
+                                             (alexandria:random-elt
+                                              (reduce #'select-best-program-lexicase
+                                                      errors
+                                                      :initial-value (range population-size (list parent1-idx))
+                                                      :from-end t))))
+                (setf (elt population worst-idx) (make-child parent1 parent2)))
+              (progn
+                (setf (elt population worst-idx)
+                      (mutate parent1))))
           (iter:iter (iter:for i :below (length errors))
             (setf (elt (elt errors i) worst-idx) (mapcar
                                                   (lambda (test)
